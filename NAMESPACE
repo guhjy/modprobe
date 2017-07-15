@@ -1,0 +1,7 @@
+import(ggplot2)
+
+export(simple.slopes, sig.region)
+S3method(print, simple.slopes)
+S3method(print, sig.region)
+S3method(plot, simple.slopes)
+S3method(plot, sig.region)

@@ -1,0 +1,21 @@
+Package: modprobe
+Title: Moderation Probing Tools
+Version: 0.0.0.9000
+Author: Noah Greifer [aut, cre]
+Maintainer: Noah Greifer <noah@unc.edu>
+Description: Tools for probing interactions in linear regression analysis. 
+Replicates the functions for moderation at http://quantpsy.org/medn.htm.
+These include calculation, testing, and plotting of simple slopes, and
+the Johsnon-Neyman technique for computing significance bounds.
+Depends:
+    R (>= 3.1)
+Imports:
+    ggplot2 (>= 2.2.0)
+Suggests:
+    knitr,
+    rmarkdown
+License: GPL (>=2)
+Encoding: UTF-8
+LazyData: true
+Date: XXXXXXXX
+VignetteBuilder: knitr
