@@ -37,15 +37,15 @@ fit.prep <- function(fit, predictor = NULL, moderator = NULL) {
       else stop("No names supplied to moderator are the names of variables in the model.", call. = FALSE)
     }
   }
-
+  pred.and.mod <- c(predictor, moderator)
   #Interactions
   interaction <- vector("list", length(moderator))
   for (i in seq_along(interaction)) {
-    possible.interactions <- apply(gtools::permutations(length(x.vars), i+1, x.vars), 1, paste, collapse = ":")
+    possible.interactions <- apply(gtools::permutations(length(pred.and.mod), i+1, pred.and.mod), 1, paste, collapse = ":")
     interaction[[i]] <- intersect(possible.interactions, attr(fit$terms, "term.labels"))
-    counts <- setNames(sapply(x.vars, function(x) sum(grepl(x, interaction[[i]], fixed = TRUE))),
-                       x.vars)
-    if (any(counts < choose(length(x.vars) - 1, i))) stop("Not all interactions are present.", call. = FALSE)
+    counts <- setNames(sapply(pred.and.mod, function(x) sum(grepl(x, interaction[[i]], fixed = TRUE))),
+                       pred.and.mod)
+    if (any(counts < choose(length(pred.and.mod) - 1, i))) stop("Not all interactions are present.", call. = FALSE)
   }
 
   if (classes[predictor] != "numeric") {
@@ -85,28 +85,45 @@ fit.prep <- function(fit, predictor = NULL, moderator = NULL) {
 
 fit.process <- function(o, fit) {
   
+  coefs <- coef(fit)
+  vc <- vcov(fit)
+  
   if (all(attr(o, "cat.mod") == FALSE)) {
-    coefs <- coef(fit)
+    b <- setNames(as.list(coefs[o$vars]),
+                  names(o$vars))
     
-    b <- setNames(coefs[o$vars], names(o$vars))
+    v <- setNames(diag(vc)[o$vars], names(o$vars))
     
+    covcomb <- combn(names(o$vars), 2, simplify = FALSE)
+    cov <- setNames(sapply(seq_along(covcomb), function(i) vc[o$vars[covcomb[[i]][1]], 
+                                                              o$vars[covcomb[[i]][2]]]),
+                    sapply(covcomb, paste, collapse = "."))
+
   }
   else {
-    # coefnames <- paste0(moderator, fit$xlevels[[moderator]])
-    # missing.coef <- coefnames[!coefnames %in% names(coefs)]
-    # b0 <- setNames(coefs[c(intercept, coefnames[coefnames != missing.coef])],
-    #                c(missing.coef, coefnames[coefnames != missing.coef]))
-    # b1 <- ""
+    coefnames <- paste0(o$moderator, fit$xlevels[[o$moderator]])
+    missing.coef <- coefnames[!coefnames %in% names(coefs)]
+    
+    b <- setNames(vector("list", 1 + length(o$moderator)),
+                  c("intercept", paste0("mod", seq_along(o$moderator))))
+    
+    b[["intercept"]] <- setNames(c(coefs[o$intercept], coefs[coefnames[coefnames != missing.coef]] + coefs[o$intercept]),
+                   c(missing.coef, coefnames[coefnames != missing.coef]))
+    b[["mod1"]] <- setNames(c(coefs[o$predictor], coefs[paste(o$predictor, coefnames[coefnames != missing.coef], sep = ":")] + coefs[o$predictor]),
+                   c(missing.coef, coefnames[coefnames != missing.coef]))
+    
+    variances <- diag(vc)
+    v <- setNames(vector("list", 1+ length(o$moderator)),
+                  c("intercept", paste0("mod", seq_along(o$moderator))))
+    v[["intercept"]] <- setNames(c(variances[o$intercept], variances[coefnames[coefnames != missing.coef]] + variances[o$intercept] + 2*vc[o$intercept, coefnames[coefnames != missing.coef]]),
+                  c(missing.coef, coefnames[coefnames != missing.coef]))
+    v[["mod1"]] <- setNames(c(variances[o$predictor], variances[paste(o$predictor, coefnames[coefnames != missing.coef], sep = ":")] + variances[o$predictor] + 2*vc[o$predictor, paste(o$predictor, coefnames[coefnames != missing.coef], sep = ":")]),
+                           c(missing.coef, coefnames[coefnames != missing.coef]))
+    
+    cov <- NULL
   }
   
-  vc <- vcov(fit)
-  v <- setNames(diag(vc)[o$vars], names(o$vars))
-  
-  covcomb <- combn(names(o$vars), 2, simplify = FALSE)
-  cov <- setNames(sapply(seq_along(covcomb), function(i) vc[o$vars[covcomb[[i]][1]], 
-                                                            o$vars[covcomb[[i]][2]]]),
-                  sapply(covcomb, paste, collapse = "."))
-  
+
   df <- fit$df.residual
   
   data <- fit$model
@@ -122,11 +139,11 @@ fit.process <- function(o, fit) {
 
 cz.prep <- function(moderator, at.mod.level = NULL, mod.level.names = NULL, data = NULL, sig.region = NULL) {
   cz <- vector("list", length(moderator))
+  if (!is.list(at.mod.level)) {
+    at.mod.level <- list(at.mod.level)
+  }
   for (i in seq_along(cz)) {
-    if (length(at.mod.level) > 0) {
-      if (!is.list(at.mod.level)) {
-        at.mod.level <- list(at.mod.level)
-      }
+    if (length(at.mod.level[[i]]) > 0) {
       if (is.numeric(at.mod.level[[i]])) {
         if (is.numeric(data[, moderator[i]])) {
           cz[[i]] <- at.mod.level[[i]]
@@ -136,6 +153,9 @@ cz.prep <- function(moderator, at.mod.level = NULL, mod.level.names = NULL, data
             warning(paste(moderator[i], "is logical, but the argument to at.mod.level contains values other than 0 or 1. Setting at.mod.level to c(FALSE, TRUE)."))
             cz[[i]] <- c(FALSE, TRUE)
           }
+        }
+        else if (is.factor(data[, moderator[i]])) {
+          cz[[i]] <- levels(data[, moderator[i]])[at.mod.level[[i]]]
         }
         else {
           stop("The argument to at.mod.level is numeric but the moderator is not.", call. = FALSE)
@@ -195,6 +215,9 @@ cz.prep <- function(moderator, at.mod.level = NULL, mod.level.names = NULL, data
         mod.sd <- sd(data[, moderator[i]])
         cz[[i]] <- setNames(c(mod.mean - mod.sd, mod.mean, mod.mean + mod.sd),
                             c("Mean - SD", "Mean", "Mean + SD"))
+      }
+      else if (is.factor(data[, moderator[i]])) {
+        cz[[i]] <- levels(data[, moderator[i]])
       }
       else {
         cz[[i]] <- sort(unique(data[, moderator[i]]))
