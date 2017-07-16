@@ -41,16 +41,7 @@ simple.slopes <- function(fit, predictor = NULL, moderator = NULL, at.mod.level 
         se.w1 <- sqrt(v[["mod1"]][j])
         
       }
-      
-      t.w0 <- w0/se.w0
-      p.w0 <- 2*pt(abs(t.w0), df, lower.tail = FALSE)
-      ci.w0 <- c(w0 - qt(alpha/2, df)*se.w0, w0 + qt(alpha/2, df)*se.w0)
-      t.w1 <- w1/se.w1
-      p.w1 <- 2*pt(abs(t.w1), df, lower.tail = FALSE)
-      ci.w1 <- c(w1 - qt(alpha/2, df)*se.w1, w1 + qt(alpha/2, df)*se.w1)
-      
-      simple.lines[[j]] <- list(w0=w0, se.w0=se.w0, t.w0=t.w0, p.w0=p.w0, ci.w0=ci.w0,
-                                w1=w1, se.w1=se.w1, t.w1=t.w1, p.w1=p.w1, ci.w1=ci.w1)
+
     }
     else if (length(moderator) == 2) {
       w0 <- b["intercept"] + b["mod1"]*cz.mat[j, "mod1"] + b["mod2"]*cz.mat[j, "mod2"] + b["mod1_mod2"]*cz.mat[j, "mod1"]*cz.mat[j, "mod2"]
@@ -60,21 +51,25 @@ simple.slopes <- function(fit, predictor = NULL, moderator = NULL, at.mod.level 
                            cov["mod1.mod2"]*cz.mat[j, "mod1"]*cz.mat[j, "mod2"] +
                            cov["mod1.mod1_mod2"]*cz.mat[j, "mod1"]^2*cz.mat[j, "mod2"] +
                            cov["mod2.mod1_mod2"]*cz.mat[j, "mod1"]*cz.mat[j, "mod2"]^2))
-      t.w0 <- w0/se.w0
-      p.w0 <- 2*pt(abs(t.w0), df, lower.tail = FALSE)
-      ci.w0 <- c(w0 - qt(alpha/2, df)*se.w0, w0 + qt(alpha/2, df)*se.w0)
+      
       w1 <- b["pred"] + b["pred_mod1"]*cz.mat[j, "mod1"] + b["pred_mod2"]*cz.mat[j, "mod2"] + b["pred_mod1_mod2"]*cz.mat[j, "mod1"]*cz.mat[j, "mod2"]
       se.w1 <- sqrt(v["pred"] + v["pred_mod1"]*cz.mat[j, "mod1"]^2 + v["pred_mod2"]*cz.mat[j, "mod2"]^2 + v["pred_mod1_mod2"]*cz.mat[j, "mod1"]^2*cz.mat[j, "mod2"]^2 +
                       2*(cov["pred.pred_mod1"]*cz.mat[j, "mod1"] + cov["pred.pred_mod2"]*cz.mat[j, "mod2"] + cov["pred.pred_mod1_mod2"]*cz.mat[j, "mod1"]*cz.mat[j, "mod2"] +
                            cov["pred_mod1.pred_mod2"]*cz.mat[j, "mod1"]*cz.mat[j, "mod2"] + cov["pred_mod1.pred_mod1_mod2"]*cz.mat[j, "mod1"]^2*cz.mat[j, "mod2"] +
                            cov["pred_mod2.pred_mod1_mod2"]*cz.mat[j, "mod1"]*cz.mat[j, "mod2"]^2))
-      t.w1 <- w1/se.w1
-      p.w1 <- 2*pt(abs(t.w1), df, lower.tail = FALSE)
-      ci.w1 <- c(w1 - qt(alpha/2, df)*se.w1, w1 + qt(alpha/2, df)*se.w1)
-      simple.lines[[j]] <- list(w0=w0, se.w0=se.w0, t.w0=t.w0, p.w0=p.w0, ci.w0=ci.w0,
-                                w1=w1, se.w1=se.w1, t.w1=t.w1, p.w1=p.w1, ci.w1=ci.w1
-      )
+      
     }
+    
+    t.w0 <- w0/se.w0
+    p.w0 <- 2*pt(abs(t.w0), df, lower.tail = FALSE)
+    ci.w0 <- c(w0 - qt(alpha/2, df)*se.w0, w0 + qt(alpha/2, df)*se.w0)
+    
+    t.w1 <- w1/se.w1
+    p.w1 <- 2*pt(abs(t.w1), df, lower.tail = FALSE)
+    ci.w1 <- c(w1 - qt(alpha/2, df)*se.w1, w1 + qt(alpha/2, df)*se.w1)
+    
+    simple.lines[[j]] <- list(w0=w0, se.w0=se.w0, t.w0=t.w0, p.w0=p.w0, ci.w0=ci.w0,
+                              w1=w1, se.w1=se.w1, t.w1=t.w1, p.w1=p.w1, ci.w1=ci.w1)
     
   }
   

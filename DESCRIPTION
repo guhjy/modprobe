@@ -4,9 +4,9 @@ Version: 0.0.0.9000
 Author: Noah Greifer [aut, cre]
 Maintainer: Noah Greifer <noah@unc.edu>
 Description: Tools for probing interactions in linear regression analysis. 
-Replicates the functions for moderation at http://quantpsy.org/medn.htm.
-These include calculation, testing, and plotting of simple slopes, and
-the Johsnon-Neyman technique for computing significance bounds.
+    Replicates the functions for moderation at http://quantpsy.org/medn.htm. 
+    These include calculation, testing, and plotting of simple slopes, and 
+    the Johsnon-Neyman technique for computing significance bounds.
 Depends:
     R (>= 3.1)
 Imports:
@@ -19,5 +19,5 @@ URL: http://github.com/ngreifer/modprobe
 BugReports: http://github.com/ngreifer/modprobe/issues
 Encoding: UTF-8
 LazyData: true
-Date: XXXXXXXX
+Date: 15-07-2017
 VignetteBuilder: knitr
