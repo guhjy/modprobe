@@ -15,10 +15,10 @@ simple.slopes <- function(fit, predictor = NULL, moderator = NULL, at.mod.level 
   
   cz.list <- cz.prep(moderator, at.mod.level = at.mod.level, mod.level.names = mod.level.names, data = data, sig.region = sig.region)
   cz.mat <- setNames(expand.grid(cz.list), paste0("mod", seq_along(moderator)))
-  cz.names.mat <- setNames(expand.grid(lapply(cz.list, function(x) if (length(names(x)) > 0) names(x) else rep("", length(x)))), paste0("mod", seq_along(moderator)))
+  cz.names.mat <- setNames(expand.grid(lapply(cz.list, function(x) if (length(names(x)) > 0) names(x) else rep("", length(x))), stringsAsFactors = FALSE), 
+                           paste0("mod", seq_along(moderator)))
   cz <- list(val = cz.mat,
              names = cz.names.mat)
-  
   simple.lines <- vector("list", nrow(cz.mat))
   for (j in seq_along(simple.lines)) {
     #Only correct with one moderator
@@ -34,17 +34,18 @@ simple.slopes <- function(fit, predictor = NULL, moderator = NULL, at.mod.level 
 
       }
       else { #categorical predictor
-        w0 <- b[["intercept"]][j]
-        se.w0 <- sqrt(v[["intercept"]][j])
+        print(cz$names[j,1])
+        w0 <- b[["intercept"]][cz$names[j,1]]
+        se.w0 <- sqrt(v[["intercept"]][cz$names[j,1]])
         
-        w1 <- b[["mod1"]][j]
-        se.w1 <- sqrt(v[["mod1"]][j])
+        w1 <- b[["mod1"]][cz$names[j,1]]
+        se.w1 <- sqrt(v[["mod1"]][cz$names[j,1]])
         
       }
 
     }
     else if (length(moderator) == 2) {
-      w0 <- b["intercept"] + b["mod1"]*cz.mat[j, "mod1"] + b["mod2"]*cz.mat[j, "mod2"] + b["mod1_mod2"]*cz.mat[j, "mod1"]*cz.mat[j, "mod2"]
+      w0 <- b[["intercept"]] + b[["mod1"]]*cz.mat[j, "mod1"] + b[["mod2"]]*cz.mat[j, "mod2"] + b[["mod1_mod2"]]*cz.mat[j, "mod1"]*cz.mat[j, "mod2"]
       se.w0 <- sqrt(v["intercept"] + v["mod1"]*cz.mat[j, "mod1"]^2 + v["mod2"]*cz.mat[j, "mod2"]^2  + v["mod1_mod2"]*cz.mat[j, "mod1"]^2*cz.mat[j, "mod2"]^2 +
                       2*(cov["intercept.mod1"]*cz.mat[j, "mod1"] + cov["intercept.mod2"]*cz.mat[j, "mod2"] +
                            cov["intercept.mod1_mod2"]*cz.mat[j, "mod1"]*cz.mat[j, "mod2"] + 
@@ -52,12 +53,16 @@ simple.slopes <- function(fit, predictor = NULL, moderator = NULL, at.mod.level 
                            cov["mod1.mod1_mod2"]*cz.mat[j, "mod1"]^2*cz.mat[j, "mod2"] +
                            cov["mod2.mod1_mod2"]*cz.mat[j, "mod1"]*cz.mat[j, "mod2"]^2))
       
-      w1 <- b["pred"] + b["pred_mod1"]*cz.mat[j, "mod1"] + b["pred_mod2"]*cz.mat[j, "mod2"] + b["pred_mod1_mod2"]*cz.mat[j, "mod1"]*cz.mat[j, "mod2"]
+      w1 <- b[["pred"]] + b[["pred_mod1"]]*cz.mat[j, "mod1"] + b[["pred_mod2"]]*cz.mat[j, "mod2"] + b[["pred_mod1_mod2"]]*cz.mat[j, "mod1"]*cz.mat[j, "mod2"]
       se.w1 <- sqrt(v["pred"] + v["pred_mod1"]*cz.mat[j, "mod1"]^2 + v["pred_mod2"]*cz.mat[j, "mod2"]^2 + v["pred_mod1_mod2"]*cz.mat[j, "mod1"]^2*cz.mat[j, "mod2"]^2 +
                       2*(cov["pred.pred_mod1"]*cz.mat[j, "mod1"] + cov["pred.pred_mod2"]*cz.mat[j, "mod2"] + cov["pred.pred_mod1_mod2"]*cz.mat[j, "mod1"]*cz.mat[j, "mod2"] +
                            cov["pred_mod1.pred_mod2"]*cz.mat[j, "mod1"]*cz.mat[j, "mod2"] + cov["pred_mod1.pred_mod1_mod2"]*cz.mat[j, "mod1"]^2*cz.mat[j, "mod2"] +
                            cov["pred_mod2.pred_mod1_mod2"]*cz.mat[j, "mod1"]*cz.mat[j, "mod2"]^2))
       
+    }
+    
+    for (k in c("w0", "w1", "se.w0", "se.w1")) {
+      assign(k, unname(get(k)))
     }
     
     t.w0 <- w0/se.w0

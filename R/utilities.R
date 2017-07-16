@@ -49,7 +49,7 @@ fit.prep <- function(fit, predictor = NULL, moderator = NULL) {
   }
 
   if (classes[predictor] != "numeric") {
-    stop(paste(predictor, "must be a numeric variable."), call. = FALSE)
+    stop(paste("The predictor must be a numeric variable."), call. = FALSE)
   }
   
   xv <- c("pred", paste0("mod", seq_along(moderator)))
@@ -101,24 +101,25 @@ fit.process <- function(o, fit) {
 
   }
   else {
-    coefnames <- paste0(o$moderator, fit$xlevels[[o$moderator]])
+    coefnames <- setNames(paste0(o$moderator, fit$xlevels[[o$moderator]]),
+                          fit$xlevels[[o$moderator]])
     missing.coef <- coefnames[!coefnames %in% names(coefs)]
     
     b <- setNames(vector("list", 1 + length(o$moderator)),
                   c("intercept", paste0("mod", seq_along(o$moderator))))
     
     b[["intercept"]] <- setNames(c(coefs[o$intercept], coefs[coefnames[coefnames != missing.coef]] + coefs[o$intercept]),
-                   c(missing.coef, coefnames[coefnames != missing.coef]))
+                   c(names(missing.coef), names(coefnames[coefnames != missing.coef])))
     b[["mod1"]] <- setNames(c(coefs[o$predictor], coefs[paste(o$predictor, coefnames[coefnames != missing.coef], sep = ":")] + coefs[o$predictor]),
-                   c(missing.coef, coefnames[coefnames != missing.coef]))
+                   c(names(missing.coef), names(coefnames[coefnames != missing.coef])))
     
     variances <- diag(vc)
     v <- setNames(vector("list", 1+ length(o$moderator)),
                   c("intercept", paste0("mod", seq_along(o$moderator))))
     v[["intercept"]] <- setNames(c(variances[o$intercept], variances[coefnames[coefnames != missing.coef]] + variances[o$intercept] + 2*vc[o$intercept, coefnames[coefnames != missing.coef]]),
-                  c(missing.coef, coefnames[coefnames != missing.coef]))
+                  c(names(missing.coef), names(coefnames[coefnames != missing.coef])))
     v[["mod1"]] <- setNames(c(variances[o$predictor], variances[paste(o$predictor, coefnames[coefnames != missing.coef], sep = ":")] + variances[o$predictor] + 2*vc[o$predictor, paste(o$predictor, coefnames[coefnames != missing.coef], sep = ":")]),
-                           c(missing.coef, coefnames[coefnames != missing.coef]))
+                           c(names(missing.coef), names(coefnames[coefnames != missing.coef])))
     
     cov <- NULL
   }
@@ -139,7 +140,7 @@ fit.process <- function(o, fit) {
 
 cz.prep <- function(moderator, at.mod.level = NULL, mod.level.names = NULL, data = NULL, sig.region = NULL) {
   cz <- vector("list", length(moderator))
-  if (!is.list(at.mod.level)) {
+  if (length(at.mod.level) > 0 && !is.list(at.mod.level)) {
     at.mod.level <- list(at.mod.level)
   }
   for (i in seq_along(cz)) {
@@ -303,5 +304,3 @@ gg_color_hue <- function(n) {
   hues = seq(15, 375, length = n + 1)
   hcl(h = hues, l = 50, c = 100)[1:n]
 }
-
-# Make coeffs for factors 
