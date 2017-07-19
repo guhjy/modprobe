@@ -17,19 +17,6 @@ sig.region <- function(fit, predictor = NULL, moderator = NULL, mod.range = NULL
     cz.list <- list(0)
   }
   
-  #####
-  # cz <- 1
-  # tcrit <- abs(qt(alpha, df))
-  # a0 <- tcrit^2*v["pred_mod1"] + tcrit^2*v["pred_mod1_mod2"]*cz^2 + 2*tcrit^2*cov["pred_mod2.pred_mod1_mod2"]*cz -
-  #   b["pred_mod1"]^2 - 2*b["pred_mod1"]*b["pred_mod1_mod2"]*cz - b["pred_mod1_mod2"]^2*cz^2
-  # 
-  # b0 <- 2*tcrit^2*cov["pred.pred_mod1"] + 2*tcrit^2*cov["pred.pred_mod1_mod2"]*cz + 2*tcrit^2*cov["pred_mod1.pred_mod2"]*cz +
-  #   2*tcrit^2*cov["pred_mod2.pred_mod1_mod2"]*cz^2 - 2*b["pred"]*b["pred_mod1"] - 2*b["pred"]*b["mod1_mod2"]*cz -
-  #   2*b["pred_mod1"]*b["pred_mod2"]*cz - 2*b["pred_mod2"]*b["pred_mod1_mod2"]*cz^2
-  # #print(c(a0=unname(a0), b0=unname(b0)))
-  # print(cov); stop()
-  #####
-  
   if (!is.numeric(data[, moderator[1]]) || length(unique(data[, moderator[1]])) < 3) {
     stop("The moderator must be a continuous variable to generate confidence bands.", call. = FALSE)
   }
@@ -137,12 +124,10 @@ plot.sig.region <- function(sr, mod.range = NULL, colors = NULL, ggplot2 = TRUE,
     # if (sr$sig.region.list[[i]]$sig == "outside") d$sig <- ifelse(between(d$x, sr$sig.region.list[[i]]$bounds, inclusive = FALSE), "nonsig", "sig")
     # else d$sig <- ifelse(between(d$x, sr$sig.region.list[[i]]$bounds), "nonsig", "sig")
     d$level <- factor(rep(sr$cz[[1]][i], nrow(d)))
-    #d$level <- factor(rep(1, nrow(d)))
     d <- d[between(d$x, xlimits),]
     d.list[[i]] <- d
     
   }
-  #d <- data.frame(x = sort(c(sr$bounds, seq(min(c(xlimits[1], sr$bounds)), max(c(xlimits[2],sr$bounds)), length.out = n))))
   D <- do.call("rbind", d.list)
   
   #Color
@@ -169,10 +154,10 @@ plot.sig.region <- function(sr, mod.range = NULL, colors = NULL, ggplot2 = TRUE,
     }
   }
   
-  bounds <- numeric(2*length(sr$sig.region.list))
-  bounds.colors <- numeric(2*length(sr$sig.region.list))
+  bounds <- numeric(2*nlevels)
+  bounds.colors <- numeric(2*nlevels)
   cl <- 0
-  for (i in seq_along(sr$sig.region.list)) {
+  for (i in seq_len(nlevels)) {
     cl <- cl + 1
     bounds[c(2*i-1,2*i)] <- sr$sig.region.list[[i]]$bounds
     bounds.colors[c(2*i-1,2*i)] <- colors[cl]
@@ -201,7 +186,6 @@ plot.sig.region <- function(sr, mod.range = NULL, colors = NULL, ggplot2 = TRUE,
     }
   }
   return(sp)
-  
 }
 
 print.sig.region <- function(sr, digits = 4,...) {
