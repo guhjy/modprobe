@@ -1,5 +1,5 @@
 simple.slopes <- function(fit, predictor = NULL, moderator = NULL, at.mod.level = NULL, 
-                          mod.level.names = NULL, pred.range = NULL, alpha = .05, sig.region = NULL, ...) {
+                          mod.level.names = NULL, alpha = .05, sig.region = NULL, ...) {
   fit.check(fit)
   o <- fit.prep(fit, predictor, moderator)
   B <- fit.process(o, fit)
@@ -11,7 +11,7 @@ simple.slopes <- function(fit, predictor = NULL, moderator = NULL, at.mod.level 
     assign(i, B[[i]])
   }
   
-  if (length(pred.range) == 0 || !is.numeric(pred.range)) pred.range <- range(data[, predictor])
+  pred.range <- range(data[, predictor])
   
   cz.list <- cz.prep(moderator, at.mod.level = at.mod.level, mod.level.names = mod.level.names, data = data, sig.region = sig.region)
   cz.mat <- setNames(expand.grid(cz.list), paste0("mod", seq_along(moderator)))
@@ -89,7 +89,8 @@ simple.slopes <- function(fit, predictor = NULL, moderator = NULL, at.mod.level 
   
 }
 
-plot.simple.slopes <- function(s, pred.range = NULL, ...) {
+plot.simple.slopes <- function(s, pred.range = NULL, colors = NULL, ...) {
+  args <- list(...)
   
   if (length(pred.range) > 0) {
     if (length(pred.range) == 2 && is.numeric(pred.range)) {
@@ -100,45 +101,59 @@ plot.simple.slopes <- function(s, pred.range = NULL, ...) {
     }
   }
   xlimits <- s$pred.range
+  nmods <- length(s$var.names$moderator)
+  nlines <- nrow(s$cz[["names"]])
   
-  plot.data.list <- vector("list", length(s$simple.lines))
-  if (length(s$var.names$moderator) == 1) {
-    x <- seq(min(xlimits), max(xlimits), length.out = 5)
+  #Color
+  nlevels.mod1 <- length(unique(s$cz[["names"]][, 1]))
+  if (length(args$colours) > 0) colors <- args$colours
+  
+  if (length(colors) == 0) {
+    colors <- gg_color_hue(nlevels.mod1)
+  }
+  else {
+    if (length(colors) == 1) colors <- rep(colors, nlevels.mod1)
+    else if (length(colors) > nlevels.mod1) {
+      colors <- colors[seq_len(nlevels.mod1)]
+      warning(paste("Only using first", nlevels.mod1, "values in colors."), call. = FALSE)
+    }
+    else if (length(colors) < nlevels.mod1) {
+      warning("Not enough colors were specified. Using default colors instead.", call. = FALSE)
+      colors <- gg_color_hue(nlevels.mod1)
+    }
+    
+    if (!all(sapply(colors, isColor))) {
+      warning("The argument to colors contains at least one value that is not a recognized color. Using default colors instead.", call. = FALSE)
+      colors <- gg_color_hue(nlevels.mod1)
+    }
+  }
+  
+  plot.data.list <- vector("list", nlines)
+  if (nmods >= 1) {
+    x <- seq(min(xlimits), max(xlimits), length.out = 2)
     
     for (j in seq_along(plot.data.list)) {
-      plot.data.list[[j]] <- data.frame(x = x, 
-                                        y = with(s$simple.lines[[j]], w0 + w1*x),
-                                        mod1.level = rep(s$cz[["names"]][j, 1], length(x)))
+      d <- as.data.frame(matrix(c(x, with(s$simple.lines[[j]], w0 + w1*x)), nrow = length(x), byrow = FALSE))
+      plot.data.list[[j]] <- setNames(cbind(d, as.data.frame(simplify2array(lapply(seq_len(nmods), function(q) rep(s$cz[["names"]][j, q], length(x)))))),
+                                      c("x", "y", paste0("mod", seq_len(ncol(s$cz[["names"]])), ".level")))
     }
     plot.data <- do.call("rbind", plot.data.list)
-    ggplot(data = plot.data, aes(x=x, y=y, color = mod1.level)) + 
+    ss <- ggplot(data = plot.data, aes(x=x, y=y, color = mod1.level)) + 
       labs(x=s$var.names[["predictor"]], 
            y=s$var.names[["outcome"]], 
            color = s$var.names[["moderator"]][1],
-           linetype = s$var.names[["moderator"]][2],
            title = "Simple Slopes") +
-      geom_line(size = 1)
-    
-  }
-  else if (length(s$var.names$moderator) == 2) {
-    x <- seq(min(xlimits), max(xlimits), length.out = 5)
-    
-    for (j in seq_along(plot.data.list)) {
-      
-      plot.data.list[[j]] <- data.frame(x = x,
-                                        y = with(s$simple.lines[[j]], w0 + w1*x),
-                                        mod1.level = rep(s$cz[["names"]][j, 1], length(x)),
-                                        mod2.level = rep(s$cz[["names"]][j, 2], length(x)))
+      scale_color_manual(values = colors) 
+    if (nmods == 2) {
+      ss <- ss + geom_line(aes(linetype = mod2.level), size = 1) +
+        labs(linetype = s$var.names[["moderator"]][2])
     }
-    plot.data <- do.call("rbind", plot.data.list)
-    ggplot(data = plot.data, aes(x=x, y=y, color = mod1.level, linetype = mod2.level)) + 
-      labs(x=s$var.names[["predictor"]], 
-           y=s$var.names[["outcome"]], 
-           color = s$var.names[["moderator"]][1],
-           linetype = s$var.names[["moderator"]][2],
-           title = "Simple Slopes") +
-      geom_line(size = 1)
+    else {
+      ss <- ss + geom_line(size = 1)
+    }
+    
   }
+  return(ss)
   
 }
 
