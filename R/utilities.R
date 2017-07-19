@@ -139,31 +139,70 @@ fit.process <- function(o, fit) {
 }
 
 cz.prep <- function(moderator, at.mod.level = NULL, mod.level.names = NULL, data = NULL, sig.region = NULL) {
-  cz <- vector("list", length(moderator))
-  if (length(at.mod.level) > 0 && !is.list(at.mod.level)) {
-    at.mod.level <- list(at.mod.level)
-  }
-  for (i in seq_along(cz)) {
+  cz <- setNames(vector("list", length(moderator)), moderator)
+  if (length(at.mod.level) > 0) {
+    if (!is.list(at.mod.level)) {
+      at.mod.level <- setNames(list(at.mod.level), moderator[seq_along(list(at.mod.level))])
+    }
+    if (length(at.mod.level) > length(moderator)) {
+      plural <- length(moderator) > 1
+      stop(paste(length(at.mod.level), "moderator levels were specified in at.mod.level, but there", ifelse(plural, "are", "is"),
+           "only", length(moderator), ifelse(plural, "moderators", "moderator"), "specified."), call. = FALSE)
+    }
+    else if (length(intersect(names(at.mod.level), moderator)) < length(moderator)){
+      new.at.mod.level <- at.mod.level[names(at.mod.level) %in% moderator]
+      if (length(new.at.mod.level) < length(moderator)) {
+        new.at.mod.level <- c(new.at.mod.level, setNames(lapply(seq_len(length(moderator) - length(new.at.mod.level)),
+                                                       function(x) {if (x <= sum(!names(at.mod.level) %in% moderator)) at.mod.level[!names(at.mod.level) %in% moderator][[x]]
+                                                       else NULL}),
+                                                       moderator[!moderator%in%names(at.mod.level)]))
+      }
+      at.mod.level <- new.at.mod.level
+    }
+  
+    if (length(mod.level.names) > 0) {
+      if (!is.list(mod.level.names)) {
+        mod.level.names <- setNames(list(mod.level.names), moderator[seq_along(list(mod.level.names))])
+      }
+      if (length(mod.level.names) > length(moderator)) {
+        plural <- length(moderator) > 1
+        stop(paste(length(mod.level.names), "moderator levels were specified in mod.level.names, but there", ifelse(plural, "are", "is"),
+                   "only", length(moderator), ifelse(plural, "moderators", "moderator"), "specified."), call. = FALSE)
+      }
+      else if (length(intersect(names(mod.level.names), moderator)) < length(moderator)){
+        new.mod.level.names <- mod.level.names[names(mod.level.names) %in% moderator]
+        if (length(new.mod.level.names) < length(moderator)) {
+          new.mod.level.names <- c(new.mod.level.names, setNames(lapply(seq_len(length(moderator) - length(new.mod.level.names)),
+                                                                  function(x) {if (x <= sum(!names(mod.level.names) %in% moderator)) mod.level.names[!names(mod.level.names) %in% moderator][[x]]
+                                                                    else NULL}),
+                                                           moderator[!moderator %in% names(mod.level.names)]))
+        }
+        mod.level.names <- new.mod.level.names
+      }
+    } 
+  } 
+    
+  for (i in moderator) {
     if (length(at.mod.level[[i]]) > 0) {
       if (is.numeric(at.mod.level[[i]])) {
-        if (is.numeric(data[, moderator[i]])) {
+        if (is.numeric(data[, i])) {
           cz[[i]] <- at.mod.level[[i]]
         }
-        else if (is.logical(data[, moderator[i]])) {
+        else if (is.logical(data[, i])) {
           if (!all(at.mod.level[[i]] %in% c(0, 1))) {
-            warning(paste(moderator[i], "is logical, but the argument to at.mod.level contains values other than 0 or 1. Setting at.mod.level to c(FALSE, TRUE)."))
+            warning(paste(i, "is logical, but the argument to at.mod.level contains values other than 0 or 1. Setting at.mod.level to c(FALSE, TRUE)."))
             cz[[i]] <- c(FALSE, TRUE)
           }
         }
-        else if (is.factor(data[, moderator[i]])) {
-          cz[[i]] <- levels(data[, moderator[i]])[at.mod.level[[i]]]
+        else if (is.factor(data[, i])) {
+          cz[[i]] <- levels(data[, i])[at.mod.level[[i]]]
         }
         else {
           stop("The argument to at.mod.level is numeric but the moderator is not.", call. = FALSE)
         }
       }
       else if (is.character(at.mod.level[[i]])) {
-        if (is.character(data[, moderator[i]]) || is.factor(data[, moderator[i]])) {
+        if (is.character(data[, i]) || is.factor(data[, i])) {
           cz[[i]] <- at.mod.level[[i]]
         }
         else {
@@ -171,7 +210,7 @@ cz.prep <- function(moderator, at.mod.level = NULL, mod.level.names = NULL, data
         }
       }
       else if (is.logical(at.mod.level[[i]])) {
-        if (is.logical(data[, moderator[i]])) {
+        if (is.logical(data[, i])) {
           cz[[i]] <- at.mod.level[[i]]
         }
         else {
@@ -179,12 +218,9 @@ cz.prep <- function(moderator, at.mod.level = NULL, mod.level.names = NULL, data
         }
       }
       else {
-        stop(paste("The argument to at.mod.level must be the same type as", moderator[i]), call. = FALSE)
+        stop(paste("The argument to at.mod.level must be the same type as", i), call. = FALSE)
       }
       if (length(mod.level.names) > 0) {
-        if (!is.list(mod.level.names)) {
-          mod.level.names <- list(mod.level.names)
-        }
         if (length(mod.level.names[[i]]) == length(cz[[i]])) {
           if (length(unique(mod.level.names[[i]])) != length(mod.level.names[[i]])) {
             warning("mod.level.names contains duplicate values. Ignoring mod.level.names.", call. = FALSE)
@@ -198,7 +234,7 @@ cz.prep <- function(moderator, at.mod.level = NULL, mod.level.names = NULL, data
     }
     if (length(sig.region) > 0) {
       if (length(cz[[i]]) > 0) {
-        warning("An argument to sig.region was specified, but will be ignored. Using at.model.level instead.", call. = FALSE)
+        warning("An argument to sig.region was specified, but will be ignored. Using at.mod.level instead.", call. = FALSE)
       }
       else {
         if (length(sig.region$bounds) == 2 && is.numeric(sig.region$bounds)) {
@@ -211,17 +247,17 @@ cz.prep <- function(moderator, at.mod.level = NULL, mod.level.names = NULL, data
       }
     }
     if (length(cz[[i]]) == 0) {
-      if (is.numeric(data[, moderator[i]]) && length(unique(data[, moderator[i]])) > 3) {
-        mod.mean <- mean(data[, moderator[i]])
-        mod.sd <- sd(data[, moderator[i]])
+      if (is.numeric(data[, i]) && length(unique(data[, i])) > 3) {
+        mod.mean <- mean(data[, i])
+        mod.sd <- sd(data[, i])
         cz[[i]] <- setNames(c(mod.mean - mod.sd, mod.mean, mod.mean + mod.sd),
                             c("Mean - SD", "Mean", "Mean + SD"))
       }
-      else if (is.factor(data[, moderator[i]])) {
-        cz[[i]] <- levels(data[, moderator[i]])
+      else if (is.factor(data[, i])) {
+        cz[[i]] <- levels(data[, i])
       }
       else {
-        cz[[i]] <- sort(unique(data[, moderator[i]]))
+        cz[[i]] <- sort(unique(data[, i]))
       }
     }
     if (length(names(cz[[i]])) == 0) {
@@ -294,16 +330,16 @@ fit.check <- function(fit) {
   if (!all(class(fit) == "lm")) {
     if (any(class(fit) == "glm")) {
       if (fit$family != "gaussian" || fit$link != "identity") {
-        stop("The input to fit must be an lm object or a glm object with family = \"guassian\".", call. = FALSE)
+        stop("The input to fit must be an lm object or a glm object with family = \"gaussian\".", call. = FALSE)
       }
     }
-    else stop("The input to fit must be a lm object or a glm object with family = \"guassian\".", call. = FALSE)
+    else stop("The input to fit must be an lm object or a glm object with family = \"gaussian\".", call. = FALSE)
   }
   if (length(all.vars(fit$terms)) < 3) {
-    stop("The regresison needs to contain at least 2 predictors and an outcome.", call. = FALSE)
+    stop("The regression needs to contain at least 2 predictors and an outcome.", call. = FALSE)
   }
   if (all(classes[names(classes) %in% x.vars] != "numeric")) {
-    stop("No variables in the model are numeric. The predictor must be numeric, but the moderator may not be.", call. = FALSE)
+    stop("No variables in the model are numeric. At least the predictor must be numeric.", call. = FALSE)
   }
 }
 
