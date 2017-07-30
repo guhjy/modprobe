@@ -10,7 +10,8 @@ Description: Tools for probing interactions in linear regression analysis.
 Depends:
     R (>= 3.1)
 Imports:
-    ggplot2 (>= 2.2.0)
+    ggplot2 (>= 2.2.0),
+    gtools
 Suggests:
     knitr,
     rmarkdown
@@ -19,5 +20,5 @@ URL: http://github.com/ngreifer/modprobe
 BugReports: http://github.com/ngreifer/modprobe/issues
 Encoding: UTF-8
 LazyData: true
-Date: 15-07-2017
+Date: XXXX-XX-XX
 VignetteBuilder: knitr
