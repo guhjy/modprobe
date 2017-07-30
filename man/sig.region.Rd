@@ -8,7 +8,7 @@ Johnson-Neyman Significance Regions
 \description{
 Estimates the Johnson-Neyman significance bounds for a linear fit. These are the bounds at which the effect of the predictor on the outcome changes from being significant to being non-signficant given varying values of the moderator(s). Also estmates the confidence bands for the slope of the predictor on the outcome for varying levels of the moderator(s).}
 \usage{
-sig.region(fit, predictor = NULL, moderator = NULL, mod.range = NULL, at.mod2.level = NULL, mod2.level.names = NULL, alpha = 0.05)
+sig.region(fit, predictor = NULL, moderator = NULL, mod.range = NULL, at.mod2.level = NULL, mod2.level.names = NULL, alpha = 0.05, simultaneous = FALSE)
 }
 \method{print}{sig.region}(sr, digits = 4, ...)
 
@@ -32,6 +32,9 @@ optional; a vector of the same length as \code{at.mod2.level} containing the nam
 }
   \item{alpha}{
 the alpha value (significance criterion) corresponding to the confidence level for the signfiicance bounds and regions.
+}
+  \item{simultaneous}{
+whether the bounds and bands should be calculated considering the tests as simultaneous or not. If so, a stricter criterion is used, making the bands wider.
 }
   \item{sr}{
 a \code{sig.region} object; the output of a call to \code{sig.region()}.
