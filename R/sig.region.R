@@ -1,4 +1,4 @@
-sig.region <- function(fit, predictor = NULL, moderator = NULL, mod.range = NULL, at.mod2.level = NULL, mod2.level.names = NULL, alpha = .05) {
+sig.region <- function(fit, predictor = NULL, moderator = NULL, mod.range = NULL, at.mod2.level = NULL, mod2.level.names = NULL, alpha = .05, simultaneous = FALSE) {
   fit.check(fit)
   o <- fit.prep(fit, predictor, moderator)
   B <- fit.process(o, fit)
@@ -21,7 +21,8 @@ sig.region <- function(fit, predictor = NULL, moderator = NULL, mod.range = NULL
     stop("The moderator must be a continuous variable to generate confidence bands.", call. = FALSE)
   }
   
-  tcrit <- abs(qt(alpha/2, df))
+  if (simultaneous) tcrit <- sqrt(2*qf(alpha, 2, df, lower.tail = FALSE))
+  else tcrit <- abs(qt(alpha/2, df))
   #Using equations from Bauer & Curran (2005); need to solve a quadratic
   
   sig.region.list <- vector("list", length(cz.list[[1]]))
