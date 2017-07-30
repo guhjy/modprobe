@@ -1,5 +1,5 @@
 import(ggplot2)
-importFrom("gtools", "permuations")
+importFrom("gtools", "permutations")
 importFrom("utils", "data")
 importFrom("stats", "lm", "coef", "vcov", "pt")
 importFrom("grDevices", "col2rgb", "hcl")
