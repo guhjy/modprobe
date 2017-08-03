@@ -2,7 +2,7 @@ simple.slopes <- function(fit, predictor = NULL, moderator = NULL, at.mod.level 
                           mod.level.names = NULL, alpha = .05, sig.region = NULL, ...) {
   fit.check(fit)
   o <- fit.prep(fit, predictor, moderator)
-  B <- fit.process(o, fit)
+  B <- fit.process2(o, fit)
   
   for (i in names(o)) {
     assign(i, o[[i]])
@@ -13,69 +13,48 @@ simple.slopes <- function(fit, predictor = NULL, moderator = NULL, at.mod.level 
   
   pred.range <- range(data[, predictor])
   
-  cz.list <- cz.prep(moderator, at.mod.level = at.mod.level, mod.level.names = mod.level.names, data = data, sig.region = sig.region)
-  cz.mat <- setNames(expand.grid(cz.list), paste0("mod", seq_along(moderator)))
-  cz.names.mat <- setNames(expand.grid(lapply(cz.list, function(x) if (length(names(x)) > 0) names(x) else rep("", length(x))), stringsAsFactors = FALSE), 
-                           paste0("mod", seq_along(moderator)))
-  cz <- list(val = cz.mat,
-             names = cz.names.mat)
-  simple.lines <- vector("list", nrow(cz.mat))
-  for (j in seq_along(simple.lines)) {
-    #Only correct with one moderator
-    # mod <- unlist(lapply(seq_along(moderator), function(x) sapply(combn(paste0("mod", seq_along(moderator)), x, simplify = FALSE), paste, collapse = "_")))
-    # w0 <- b["intercept"] + sum(sapply(mod, function(x) b[x]*cz.mat[j, x]))
-    if (length(moderator) == 1) {
-      if (all(attr(o, "cat.mod") == FALSE)) { #continuous moderator
-        w0 <- b[["intercept"]] + b[["mod1"]]*cz.mat[j, "mod1"]
-        se.w0 <- sqrt(v["intercept"] + v["mod1"]*cz.mat[j, "mod1"]^2 + 2*cov["intercept.mod1"]*cz.mat[j, "mod1"])
-       
-        w1 <- b[["pred"]] + b[["pred_mod1"]]*cz.mat[j, "mod1"]
-        se.w1 <- sqrt(v["pred"] + 2*cz.mat[j, "mod1"]*cov["pred.pred_mod1"] + cz.mat[j, "mod1"]^2*v["pred_mod1"])
-
+  cz.list <- cz.prep(o, B, at.mod.level = at.mod.level, mod.level.names = mod.level.names, data = data, sig.region = sig.region)
+  cz <- list(val = setNames(expand.grid(cz.list[["cz"]]), names(o$vars)[o$vars %in% names(cz.list[["cz"]])]),
+             names = setNames(expand.grid(lapply(cz.list[["cz"]], function(x) if (length(names(x)) > 0) names(x) else rep("", length(x))), stringsAsFactors = FALSE), 
+                              names(o$vars)[o$vars %in% names(cz.list[["cz"]])]))
+  cz$val.exp <- cbind(seq_len(nrow(cz$val)), cz$val) #Create ID variable to preserve order after merge()
+  if (length(cz.list$mod.exp.list) > 0) {
+    for (i in names(cz$val)) {
+      if (i %in% names(cz.list$mod.exp.list)) {
+        cz$val.exp <- merge(cz$val.exp, cz.list$mod.exp.list[[i]], by = i, sort = FALSE)
+        cz$val.exp <- cz$val.exp[, names(cz$val.exp) != i]
       }
-      else { #categorical predictor
-        print(cz$names[j,1])
-        w0 <- b[["intercept"]][cz$names[j,1]]
-        se.w0 <- sqrt(v[["intercept"]][cz$names[j,1]])
-        
-        w1 <- b[["mod1"]][cz$names[j,1]]
-        se.w1 <- sqrt(v[["mod1"]][cz$names[j,1]])
-        
-      }
-
     }
-    else if (length(moderator) == 2) {
-      w0 <- b[["intercept"]] + b[["mod1"]]*cz.mat[j, "mod1"] + b[["mod2"]]*cz.mat[j, "mod2"] + b[["mod1_mod2"]]*cz.mat[j, "mod1"]*cz.mat[j, "mod2"]
-      se.w0 <- sqrt(v["intercept"] + v["mod1"]*cz.mat[j, "mod1"]^2 + v["mod2"]*cz.mat[j, "mod2"]^2  + v["mod1_mod2"]*cz.mat[j, "mod1"]^2*cz.mat[j, "mod2"]^2 +
-                      2*(cov["intercept.mod1"]*cz.mat[j, "mod1"] + cov["intercept.mod2"]*cz.mat[j, "mod2"] +
-                           cov["intercept.mod1_mod2"]*cz.mat[j, "mod1"]*cz.mat[j, "mod2"] + 
-                           cov["mod1.mod2"]*cz.mat[j, "mod1"]*cz.mat[j, "mod2"] +
-                           cov["mod1.mod1_mod2"]*cz.mat[j, "mod1"]^2*cz.mat[j, "mod2"] +
-                           cov["mod2.mod1_mod2"]*cz.mat[j, "mod1"]*cz.mat[j, "mod2"]^2))
-      
-      w1 <- b[["pred"]] + b[["pred_mod1"]]*cz.mat[j, "mod1"] + b[["pred_mod2"]]*cz.mat[j, "mod2"] + b[["pred_mod1_mod2"]]*cz.mat[j, "mod1"]*cz.mat[j, "mod2"]
-      se.w1 <- sqrt(v["pred"] + v["pred_mod1"]*cz.mat[j, "mod1"]^2 + v["pred_mod2"]*cz.mat[j, "mod2"]^2 + v["pred_mod1_mod2"]*cz.mat[j, "mod1"]^2*cz.mat[j, "mod2"]^2 +
-                      2*(cov["pred.pred_mod1"]*cz.mat[j, "mod1"] + cov["pred.pred_mod2"]*cz.mat[j, "mod2"] + cov["pred.pred_mod1_mod2"]*cz.mat[j, "mod1"]*cz.mat[j, "mod2"] +
-                           cov["pred_mod1.pred_mod2"]*cz.mat[j, "mod1"]*cz.mat[j, "mod2"] + cov["pred_mod1.pred_mod1_mod2"]*cz.mat[j, "mod1"]^2*cz.mat[j, "mod2"] +
-                           cov["pred_mod2.pred_mod1_mod2"]*cz.mat[j, "mod1"]*cz.mat[j, "mod2"]^2))
-      
+  }
+  cz$val.exp <- cz$val.exp[order(cz$val.exp[,1]),-1, drop = FALSE] #To preserve correct order disrupted by merge()
+  simple.lines <- vector("list", nrow(cz[["val.exp"]])) 
+  
+  for (i in seq_along(simple.lines)) {
+    a <- matrix(1, ncol = 2, nrow = length(coefs), dimnames = list(names(coefs), c("0", "1")))
+    
+    #For w0
+    a[,"0"][indices.with[["pred"]]] <- 0
+    a[,"0"][!(indices.with[["intercept"]] | indices.with[["pred"]] | apply(simplify2array(indices.with[["mod"]]), 1, any))] <- 0 #Not intercept, pred, or mods
+    for (m in names(indices.with[["mod"]])) {
+      a[,"0"][!indices.with[["pred"]] & indices.with[["mod"]][[m]]] <- a[,"0"][!indices.with[["pred"]] & indices.with[["mod"]][[m]]]*cz$val.exp[i, m]
     }
     
-    for (k in c("w0", "w1", "se.w0", "se.w1")) {
-      assign(k, unname(get(k)))
+    #For w1
+    a[,"1"][!indices.with[["pred"]]] <- 0
+    a[,"1"][!(indices.with[["intercept"]] | indices.with[["pred"]] | apply(simplify2array(indices.with[["mod"]]), 1, any))] <- 0 #Not intercept, pred, or mods
+    for (m in names(indices.with[["mod"]])) {
+      a[,"1"][indices.with[["pred"]] & indices.with[["mod"]][[m]]] <- a[,"1"][indices.with[["pred"]] & indices.with[["mod"]][[m]]]*cz$val.exp[i, m]
     }
     
-    t.w0 <- w0/se.w0
-    p.w0 <- 2*pt(abs(t.w0), df, lower.tail = FALSE)
-    ci.w0 <- c(w0 - qt(alpha/2, df)*se.w0, w0 + qt(alpha/2, df)*se.w0)
+    w <- drop(t(a) %*% coefs)
+    se <- sqrt(diag(t(a) %*% vcov %*% a))
     
-    t.w1 <- w1/se.w1
-    p.w1 <- 2*pt(abs(t.w1), df, lower.tail = FALSE)
-    ci.w1 <- c(w1 - qt(alpha/2, df)*se.w1, w1 + qt(alpha/2, df)*se.w1)
-    
-    simple.lines[[j]] <- list(w0=w0, se.w0=se.w0, t.w0=t.w0, p.w0=p.w0, ci.w0=ci.w0,
-                              w1=w1, se.w1=se.w1, t.w1=t.w1, p.w1=p.w1, ci.w1=ci.w1)
-    
+    t <- w/se
+    p <- 2*pt(abs(t), df, lower.tail = FALSE)
+    ci.levels <- c(alpha/2, 1-alpha/2)
+    ci <- matrix(w + se %o% qt(ci.levels, df), nrow = length(w), ncol = 2, 
+                 dimnames = list(names(w), paste0(100*ci.levels, "%")))
+    simple.lines[[i]] <- list(w=w, se=se, t=t, p=p, ci=ci)
   }
   
   var.names <- list(outcome = outcome, predictor = predictor, moderator = moderator)
@@ -83,10 +62,11 @@ simple.slopes <- function(fit, predictor = NULL, moderator = NULL, at.mod.level 
   out <- list(simple.lines = simple.lines,
               var.names = var.names,
               pred.range = pred.range,
+              link = link,
               cz = cz)
+  
   class(out) <- "simple.slopes"
   return(out)
-  
 }
 
 plot.simple.slopes <- function(s, pred.range = NULL, colors = NULL, ...) {
@@ -129,48 +109,63 @@ plot.simple.slopes <- function(s, pred.range = NULL, colors = NULL, ...) {
   }
   
   plot.data.list <- vector("list", nlines)
-  if (nmods >= 1) {
-    x <- seq(min(xlimits), max(xlimits), length.out = 2)
+  len <- 100
+  x <- matrix(c(rep(1, len), seq(min(xlimits), max(xlimits), length.out = len)), ncol = 2)
+  
+  for (j in seq_along(plot.data.list)) {
+    Y <- with(s$simple.lines[[j]], x %*% w)
+    # if (s$link == "logit") Y <- plogis(Y)
+    # else if (s$link == "probit") Y <- pnorm(Y)
+    Y <- make.link(s$link)$linkinv(Y)
     
-    for (j in seq_along(plot.data.list)) {
-      d <- as.data.frame(matrix(c(x, with(s$simple.lines[[j]], w0 + w1*x)), nrow = length(x), byrow = FALSE))
-      plot.data.list[[j]] <- setNames(cbind(d, as.data.frame(simplify2array(lapply(seq_len(nmods), function(q) rep(s$cz[["names"]][j, q], length(x)))))),
-                                      c("x", "y", paste0("mod", seq_len(ncol(s$cz[["names"]])), ".level")))
-    }
-    plot.data <- do.call("rbind", plot.data.list)
-    ss <- ggplot(data = plot.data, aes(x=x, y=y, color = mod1.level)) + 
-      labs(x=s$var.names[["predictor"]], 
-           y=s$var.names[["outcome"]], 
-           color = s$var.names[["moderator"]][1],
-           title = "Simple Slopes") +
-      scale_color_manual(values = colors) 
-    if (nmods == 2) {
-      ss <- ss + geom_line(aes(linetype = mod2.level), size = 1) +
-        labs(linetype = s$var.names[["moderator"]][2])
-    }
-    else {
-      ss <- ss + geom_line(size = 1)
-    }
-    
+    d <- as.data.frame(matrix(c(x[,-1], Y), nrow = len, byrow = FALSE))
+    plot.data.list[[j]] <- setNames(cbind(d, as.data.frame(simplify2array(lapply(seq_len(nmods), function(q) rep(s$cz[["names"]][j, q], length(x)))))),
+                                    c("x", "y", paste0("mod", seq_len(ncol(s$cz[["names"]])), ".level")))
   }
+  plot.data <- do.call("rbind", plot.data.list)
+  ss <- ggplot(data = plot.data, aes(x=x, y=y, color = mod1.level)) + 
+    labs(x=s$var.names[["predictor"]], 
+         y=s$var.names[["outcome"]], 
+         color = s$var.names[["moderator"]][1],
+         title = "Simple Slopes") +
+    scale_color_manual(values = colors) 
+  if (nmods == 2) {
+    ss <- ss + geom_line(aes(linetype = mod2.level), size = 1) +
+      labs(linetype = s$var.names[["moderator"]][2])
+  }
+  else {
+    ss <- ss + geom_line(size = 1)
+  }
+  
   return(ss)
   
 }
 
-print.simple.slopes <- function(s, ...) {
+print.simple.slopes <- function(s, digits = 3, ...) {
+  cat("Simple Slopes\n\n")
+  cat(paste0("The coefficient for ", s$var.names$predictor, " on ", s$var.names$outcome, ":\n"))
+  df <- setNames(cbind(s$cz$names, 
+                       do.call("rbind", lapply(s$simple.lines, function(j) c(sapply(j[-5], function(x) x["1"]), sapply(j[5], function(x) x["1",])))),
+                       ""),
+                 c(s$var.names$moderator, c("Estimate", "Std.Err", "t value", "Pr(>|t|)", "CI LB", "CI UB", "")))
+  df[,ncol(df)] <- ifelse(df[,"Pr(>|t|)"] < 0.001, "***", ifelse(df[,"Pr(>|t|)"] < 0.01, "** ", ifelse(df[,"Pr(>|t|)"] < 0.05, "*  ", ifelse(df[,"Pr(>|t|)"] < 0.1, ".  ", "   "))))
+  print.data.frame(round_df(df, digits = digits))
+  cat("---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1")
+  
+}
+
+summary.simple.slopes <- function(s, ...) {
   cat("Simple Slopes\n")
   for (j in seq_along(s$simple.lines)) {
     cat(paste0("\nAt ", word.list(sapply(seq_along(s$var.names[["moderator"]]), 
                                          function(i) paste0(s$var.names[["moderator"]][i], " = ", if (is.numeric(s$cz[["val"]][j, i])) round(s$cz[["val"]][j, i], digits = 4) 
-                                                                                                  else s$cz[["val"]][j, i], 
+                                                            else s$cz[["val"]][j, i], 
                                                             ifelse(s$cz[["names"]][j, i] != s$cz[["val"]][j, i], paste0(" (", s$cz[["names"]][j, i], ")"), "")))), "...\n"))
     cat("Coefficients:\n")
-    d <- with(s$simple.lines[[j]], matrix(c(w0, se.w0, t.w0, p.w0,
-                                            w1, se.w1, t.w1, p.w1),
-                                          nrow = 2, byrow = TRUE))
+    d <- with(s$simple.lines[[j]], matrix(c(w, se, t, p),
+                                          nrow = 2))
     dimnames(d) <- list(c("(Intercept)", s$var.names[["predictor"]]),
                         c("Estimate", "Std.Err", "t value", "Pr(>|t|)"))
     printCoefmat(d, ...)
   }
-  
 }
